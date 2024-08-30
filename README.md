@@ -1,0 +1,1 @@
+基于深度学习的边缘检测模型，backbone为Efficient
