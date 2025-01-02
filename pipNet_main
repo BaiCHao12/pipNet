@@ -1,0 +1,1061 @@
+import math
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from PIL import Image
+import torchvision.transforms as transforms
+import numpy as np
+import cv2
+import os
+
+nets = {
+    'baseline': {
+        'layer0':  'cv',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'cv',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'cv',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'cv',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'c-v15': {
+        'layer0':  'cd',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'cv',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'cv',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'cv',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'a-v15': {
+        'layer0':  'ad',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'cv',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'cv',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'cv',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'r-v15': {
+        'layer0':  'rd',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'cv',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'cv',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'cv',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'cvvv4': {
+        'layer0':  'cd',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'cd',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'cd',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'cd',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'avvv4': {
+        'layer0':  'ad',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'ad',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'ad',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'ad',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'rvvv4': {
+        'layer0':  'rd',
+        'layer1':  'cv',
+        'layer2':  'cv',
+        'layer3':  'cv',
+        'layer4':  'rd',
+        'layer5':  'cv',
+        'layer6':  'cv',
+        'layer7':  'cv',
+        'layer8':  'rd',
+        'layer9':  'cv',
+        'layer10': 'cv',
+        'layer11': 'cv',
+        'layer12': 'rd',
+        'layer13': 'cv',
+        'layer14': 'cv',
+        'layer15': 'cv',
+        },
+    'cccv4': {
+        'layer0':  'cd',
+        'layer1':  'cd',
+        'layer2':  'cd',
+        'layer3':  'cv',
+        'layer4':  'cd',
+        'layer5':  'cd',
+        'layer6':  'cd',
+        'layer7':  'cv',
+        'layer8':  'cd',
+        'layer9':  'cd',
+        'layer10': 'cd',
+        'layer11': 'cv',
+        'layer12': 'cd',
+        'layer13': 'cd',
+        'layer14': 'cd',
+        'layer15': 'cv',
+        },
+    'aaav4': {
+        'layer0':  'ad',
+        'layer1':  'ad',
+        'layer2':  'ad',
+        'layer3':  'cv',
+        'layer4':  'ad',
+        'layer5':  'ad',
+        'layer6':  'ad',
+        'layer7':  'cv',
+        'layer8':  'ad',
+        'layer9':  'ad',
+        'layer10': 'ad',
+        'layer11': 'cv',
+        'layer12': 'ad',
+        'layer13': 'ad',
+        'layer14': 'ad',
+        'layer15': 'cv',
+        },
+    'rrrv4': {
+        'layer0':  'rd',
+        'layer1':  'rd',
+        'layer2':  'rd',
+        'layer3':  'cv',
+        'layer4':  'rd',
+        'layer5':  'rd',
+        'layer6':  'rd',
+        'layer7':  'cv',
+        'layer8':  'rd',
+        'layer9':  'rd',
+        'layer10': 'rd',
+        'layer11': 'cv',
+        'layer12': 'rd',
+        'layer13': 'rd',
+        'layer14': 'rd',
+        'layer15': 'cv',
+        },
+    'c16': {
+        'layer0':  'cd',
+        'layer1':  'cd',
+        'layer2':  'cd',
+        'layer3':  'cd',
+        'layer4':  'cd',
+        'layer5':  'cd',
+        'layer6':  'cd',
+        'layer7':  'cd',
+        'layer8':  'cd',
+        'layer9':  'cd',
+        'layer10': 'cd',
+        'layer11': 'cd',
+        'layer12': 'cd',
+        'layer13': 'cd',
+        'layer14': 'cd',
+        'layer15': 'cd',
+        },
+    'a16': {
+        'layer0':  'ad',
+        'layer1':  'ad',
+        'layer2':  'ad',
+        'layer3':  'ad',
+        'layer4':  'ad',
+        'layer5':  'ad',
+        'layer6':  'ad',
+        'layer7':  'ad',
+        'layer8':  'ad',
+        'layer9':  'ad',
+        'layer10': 'ad',
+        'layer11': 'ad',
+        'layer12': 'ad',
+        'layer13': 'ad',
+        'layer14': 'ad',
+        'layer15': 'ad',
+        },
+    'r16': {
+        'layer0':  'rd',
+        'layer1':  'rd',
+        'layer2':  'rd',
+        'layer3':  'rd',
+        'layer4':  'rd',
+        'layer5':  'rd',
+        'layer6':  'rd',
+        'layer7':  'rd',
+        'layer8':  'rd',
+        'layer9':  'rd',
+        'layer10': 'rd',
+        'layer11': 'rd',
+        'layer12': 'rd',
+        'layer13': 'rd',
+        'layer14': 'rd',
+        'layer15': 'rd',
+        },
+    'carv4': {
+        'layer0':  'cd',
+        'layer1':  'ad',
+        'layer2':  'rd',
+        'layer3':  'cv',
+        'layer4':  'cd',
+        'layer5':  'ad',
+        'layer6':  'rd',
+        'layer7':  'cv',
+        'layer8':  'cd',
+        'layer9':  'ad',
+        'layer10': 'rd',
+        'layer11': 'cv',
+        'layer12': 'cd',
+        'layer13': 'ad',
+        'layer14': 'rd',
+        'layer15': 'cv',
+        },
+    }
+
+
+#### model型代码
+class Conv2d(nn.Module):
+    def __init__(self, pdc, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=False):
+        super(Conv2d, self).__init__()
+        if in_channels % groups != 0:
+            raise ValueError('in_channels must be divisible by groups')
+        if out_channels % groups != 0:
+            raise ValueError('out_channels must be divisible by groups')
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+        self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels // groups, kernel_size, kernel_size))
+        if bias:
+            self.bias = nn.Parameter(torch.Tensor(out_channels))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+        self.pdc = pdc
+
+    def reset_parameters(self):
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in)
+            nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, input):
+
+        return self.pdc(input, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+
+def createConvFunc(op_type):
+    assert op_type in ['cv', 'cd', 'ad', 'rd'], 'unknown op type: %s' % str(op_type)
+    if op_type == 'cv':
+        return F.conv2d
+
+    if op_type == 'cd':
+        def func(x, weights, bias=None, stride=1, padding=0, dilation=1, groups=1):
+            assert dilation in [1, 2], 'dilation for cd_conv should be in 1 or 2'
+            assert weights.size(2) == 3 and weights.size(3) == 3, 'kernel size for cd_conv should be 3x3'
+            assert padding == dilation, 'padding for cd_conv set wrong'
+
+            weights_c = weights.sum(dim=[2, 3], keepdim=True)
+            yc = F.conv2d(x, weights_c, stride=stride, padding=0, groups=groups)
+            y = F.conv2d(x, weights, bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
+            return y - yc
+        return func
+    elif op_type == 'ad':
+        def func(x, weights, bias=None, stride=1, padding=0, dilation=1, groups=1):
+            assert dilation in [1, 2], 'dilation for ad_conv should be in 1 or 2'
+            assert weights.size(2) == 3 and weights.size(3) == 3, 'kernel size for ad_conv should be 3x3'
+            assert padding == dilation, 'padding for ad_conv set wrong'
+
+            shape = weights.shape
+            weights = weights.view(shape[0], shape[1], -1)
+            weights_conv = (weights - weights[:, :, [3, 0, 1, 6, 4, 2, 7, 8, 5]]).view(shape) # clock-wise
+            y = F.conv2d(x, weights_conv, bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
+            return y
+        return func
+    elif op_type == 'rd':
+        def func(x, weights, bias=None, stride=1, padding=0, dilation=1, groups=1):
+            assert dilation in [1, 2], 'dilation for rd_conv should be in 1 or 2'
+            assert weights.size(2) == 3 and weights.size(3) == 3, 'kernel size for rd_conv should be 3x3'
+            padding = 2 * dilation
+
+            shape = weights.shape
+            if weights.is_cuda:
+                buffer = torch.cuda.FloatTensor(shape[0], shape[1], 5 * 5).fill_(0)
+            else:
+                buffer = torch.zeros(shape[0], shape[1], 5 * 5)
+            weights = weights.view(shape[0], shape[1], -1)
+            buffer[:, :, [0, 2, 4, 10, 14, 20, 22, 24]] = weights[:, :, 1:]
+            buffer[:, :, [6, 7, 8, 11, 13, 16, 17, 18]] = -weights[:, :, 1:]
+            buffer[:, :, 12] = 0
+            buffer = buffer.view(shape[0], shape[1], 5, 5)
+            y = F.conv2d(x, buffer, bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
+            return y
+        return func
+    else:
+        print('impossible to be here unless you force that')
+        return None
+
+def config_model(model):
+    model_options = list(nets.keys())
+    assert model in model_options, \
+        'unrecognized model, please choose from %s' % str(model_options)
+
+    print(str(nets[model]))
+
+    pdcs = []
+    for i in range(16):
+        layer_name = 'layer%d' % i
+        op = nets[model][layer_name]
+        pdcs.append(createConvFunc(op))
+
+    return pdcs
+
+class CSAM(nn.Module):
+    """
+    Compact Spatial Attention Module
+    """
+    def __init__(self, channels):
+        super(CSAM, self).__init__()
+
+        mid_channels = 4
+        self.relu1 = nn.ReLU()
+        self.conv1 = nn.Conv2d(channels, mid_channels, kernel_size=1, padding=0)
+        self.conv2 = nn.Conv2d(mid_channels, 1, kernel_size=3, padding=1, bias=False)
+        self.sigmoid = nn.Sigmoid()
+        nn.init.constant_(self.conv1.bias, 0)
+
+    def forward(self, x):
+        y = self.relu1(x)
+        y = self.conv1(y)
+        y = self.conv2(y)
+        y = self.sigmoid(y)
+
+        return x * y
+
+class CDCM(nn.Module):
+    """
+    Compact Dilation Convolution based Module
+    """
+    def __init__(self, in_channels, out_channels):
+        super(CDCM, self).__init__()
+
+        self.relu1 = nn.ReLU()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0)
+        self.conv2_1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, dilation=5, padding=5, bias=False)
+        self.conv2_2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, dilation=7, padding=7, bias=False)
+        self.conv2_3 = nn.Conv2d(out_channels, out_channels, kernel_size=3, dilation=9, padding=9, bias=False)
+        self.conv2_4 = nn.Conv2d(out_channels, out_channels, kernel_size=3, dilation=11, padding=11, bias=False)
+        nn.init.constant_(self.conv1.bias, 0)
+        
+    def forward(self, x):
+        x = self.relu1(x)
+        x = self.conv1(x)
+        x1 = self.conv2_1(x)
+        x2 = self.conv2_2(x)
+        x3 = self.conv2_3(x)
+        x4 = self.conv2_4(x)
+        return x1 + x2 + x3 + x4
+
+class MapReduce(nn.Module):
+    """
+    Reduce feature maps into a single edge map
+    """
+    def __init__(self, channels):
+        super(MapReduce, self).__init__()
+        self.conv = nn.Conv2d(channels, 1, kernel_size=1, padding=0)
+        nn.init.constant_(self.conv.bias, 0)
+
+    def forward(self, x):
+        return self.conv(x)
+
+class PDCBlock(nn.Module):
+    def __init__(self, pdc, inplane, ouplane, stride=1):
+        super(PDCBlock, self).__init__()
+        self.stride=stride
+            
+        self.stride=stride
+        ###### 该模型不用走该判断条件
+        # if self.stride > 1:
+        #     self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        #     self.shortcut = nn.Conv2d(inplane, ouplane, kernel_size=1, padding=0)
+        self.conv1 = Conv2d(pdc, inplane, inplane, kernel_size=3, padding=1, groups=inplane, bias=False)
+        self.relu2 = nn.ReLU()
+        self.conv2 = nn.Conv2d(inplane, ouplane, kernel_size=1, padding=0, bias=False)
+
+    def forward(self, x):
+        # if self.stride > 1:
+        #     x = self.pool(x)
+        y = self.conv1(x)
+        y = self.relu2(y)
+        y = self.conv2(y)
+        # if self.stride > 1:
+        #     x = self.shortcut(x)
+        y = y + x
+        return y
+
+class PDCBlock2(nn.Module):
+    def __init__(self, pdc, inplane, ouplane, stride=1):
+        super(PDCBlock2, self).__init__()
+        self.stride = stride
+        self.stride = stride
+
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.shortcut = nn.Conv2d(inplane, ouplane, kernel_size=1, padding=0)
+        self.conv1 = Conv2d(pdc, inplane, inplane, kernel_size=3, padding=1, groups=inplane, bias=False)
+        self.relu2 = nn.ReLU()
+        self.conv2 = nn.Conv2d(inplane, ouplane, kernel_size=1, padding=0, bias=False)
+
+    def forward(self, x):
+        x = self.pool(x)
+        y = self.conv1(x)
+        y = self.relu2(y)
+        y = self.conv2(y)
+        x = self.shortcut(x)
+        y = y + x
+        return y
+
+class PDCBlock_converted(nn.Module):
+    """
+    CPDC, APDC can be converted to vanilla 3x3 convolution
+    RPDC can be converted to vanilla 5x5 convolution
+    """
+    def __init__(self, pdc, inplane, ouplane, stride=1):
+        super(PDCBlock_converted, self).__init__()
+        self.stride=stride
+
+        if self.stride > 1:
+            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+            self.shortcut = nn.Conv2d(inplane, ouplane, kernel_size=1, padding=0)
+        if pdc == 'rd':
+            self.conv1 = nn.Conv2d(inplane, inplane, kernel_size=5, padding=2, groups=inplane, bias=False)
+        else:
+            self.conv1 = nn.Conv2d(inplane, inplane, kernel_size=3, padding=1, groups=inplane, bias=False)
+        self.relu2 = nn.ReLU()
+        self.conv2 = nn.Conv2d(inplane, ouplane, kernel_size=1, padding=0, bias=False)
+
+    def forward(self, x):
+        if self.stride > 1:
+            x = self.pool(x)
+        y = self.conv1(x)
+        y = self.relu2(y)
+        y = self.conv2(y)
+        if self.stride > 1:
+            x = self.shortcut(x)
+        y = y + x
+        return y
+
+class PiDiNet(nn.Module):
+    def __init__(self, inplane, pdcs, dil=None, sa=False, convert=False):
+        super(PiDiNet, self).__init__()
+        self.sa = sa
+        if dil is not None:
+            assert isinstance(dil, int), 'dil should be an int'
+        self.dil = dil
+
+        self.fuseplanes = []
+
+        self.inplane = inplane
+
+        ##### 对于使用的该模型不走该条件
+        # if convert:
+        #     if pdcs[0] == 'rd':
+        #         init_kernel_size = 5
+        #         init_padding = 2
+        #     else:
+        #         init_kernel_size = 3
+        #         init_padding = 1
+        #     self.init_block = nn.Conv2d(3, self.inplane,
+        #             kernel_size=init_kernel_size, padding=init_padding, bias=False)
+        #     block_class = PDCBlock_converted
+        # else:
+        self.init_block = Conv2d(pdcs[0], 3, self.inplane, kernel_size=3, padding=1)
+        block_class = PDCBlock
+
+        self.block1_1 = block_class(pdcs[1], self.inplane, self.inplane)
+        self.block1_2 = block_class(pdcs[2], self.inplane, self.inplane)
+        self.block1_3 = block_class(pdcs[3], self.inplane, self.inplane)
+        self.fuseplanes.append(self.inplane) # C
+
+        inplane = self.inplane
+        #### block_class = PDCBlock2
+        self.inplane = self.inplane * 2
+        self.block2_1 = PDCBlock2(pdcs[4], inplane, self.inplane, stride=2)
+        self.block2_2 = block_class(pdcs[5], self.inplane, self.inplane)
+        self.block2_3 = block_class(pdcs[6], self.inplane, self.inplane)
+        self.block2_4 = block_class(pdcs[7], self.inplane, self.inplane)
+        self.fuseplanes.append(self.inplane) # 2C
+        
+        inplane = self.inplane
+        self.inplane = self.inplane * 2
+        self.block3_1 = PDCBlock2(pdcs[8], inplane, self.inplane, stride=2)
+        self.block3_2 = block_class(pdcs[9], self.inplane, self.inplane)
+        self.block3_3 = block_class(pdcs[10], self.inplane, self.inplane)
+        self.block3_4 = block_class(pdcs[11], self.inplane, self.inplane)
+        self.fuseplanes.append(self.inplane) # 4C
+
+        self.block4_1 = PDCBlock2(pdcs[12], self.inplane, self.inplane, stride=2)
+        self.block4_2 = block_class(pdcs[13], self.inplane, self.inplane)
+        self.block4_3 = block_class(pdcs[14], self.inplane, self.inplane)
+        self.block4_4 = block_class(pdcs[15], self.inplane, self.inplane)
+        self.fuseplanes.append(self.inplane) # 4C
+
+        self.conv_reduces = nn.ModuleList()
+        # if self.sa and self.dil is not None:
+        self.attentions = nn.ModuleList()
+        self.dilations = nn.ModuleList()
+        for i in range(4):
+            self.dilations.append(CDCM(self.fuseplanes[i], self.dil))
+            self.attentions.append(CSAM(self.dil))
+            self.conv_reduces.append(MapReduce(self.dil))
+
+        ####### 模型不适用该模块
+        """
+        elif self.sa:
+            self.attentions = nn.ModuleList()
+            for i in range(4):
+                self.attentions.append(CSAM(self.fuseplanes[i]))
+                self.conv_reduces.append(MapReduce(self.fuseplanes[i]))
+        elif self.dil is not None:
+            self.dilations = nn.ModuleList()
+            for i in range(4):
+                self.dilations.append(CDCM(self.fuseplanes[i], self.dil))
+                self.conv_reduces.append(MapReduce(self.dil))
+        else:
+            for i in range(4):
+                self.conv_reduces.append(MapReduce(self.fuseplanes[i]))
+        """
+        self.classifier = nn.Conv2d(4, 1, kernel_size=1) # has bias
+        nn.init.constant_(self.classifier.weight, 0.25)
+        nn.init.constant_(self.classifier.bias, 0)
+
+        print('initialization done')
+
+    def get_weights(self):
+        conv_weights = []
+        bn_weights = []
+        relu_weights = []
+        for pname, p in self.named_parameters():
+            if 'bn' in pname:
+                bn_weights.append(p)
+            elif 'relu' in pname:
+                relu_weights.append(p)
+            else:
+                conv_weights.append(p)
+
+        return conv_weights, bn_weights, relu_weights
+
+    def forward(self, x):
+        H, W = x.size()[2:]
+
+        x = self.init_block(x)
+
+        x1 = self.block1_1(x)
+        x1 = self.block1_2(x1)
+        x1 = self.block1_3(x1)
+
+        x2 = self.block2_1(x1)
+        x2 = self.block2_2(x2)
+        x2 = self.block2_3(x2)
+        x2 = self.block2_4(x2)
+
+        x3 = self.block3_1(x2)
+        x3 = self.block3_2(x3)
+        x3 = self.block3_3(x3)
+        x3 = self.block3_4(x3)
+
+        x4 = self.block4_1(x3)
+        x4 = self.block4_2(x4)
+        x4 = self.block4_3(x4)
+        x4 = self.block4_4(x4)
+
+        # x_fuses = []
+        # if self.sa and self.dil is not None:
+        # for i, xi in enumerate([x1, x2, x3, x4]):
+        #     x_fuses.append(self.attentions[i](self.dilations[i](xi)))
+
+        ##### 该模型推理不适用该部分
+        """
+        elif self.sa:
+            for i, xi in enumerate([x1, x2, x3, x4]):
+                x_fuses.append(self.attentions[i](xi))
+        elif self.dil is not None:
+            for i, xi in enumerate([x1, x2, x3, x4]):
+                x_fuses.append(self.dilations[i](xi))
+        else:
+            x_fuses = [x1, x2, x3, x4]
+        """
+        x_fuses_0 = self.attentions[0](self.dilations[0](x1))
+        e1 = self.conv_reduces[0](x_fuses_0)
+        e1 = F.interpolate(e1, (H, W), mode="bilinear", align_corners=False)
+
+        x_fuses_1 = self.attentions[1](self.dilations[1](x2))
+        e2 = self.conv_reduces[1](x_fuses_1)
+        e2 = F.interpolate(e2, (H, W), mode="bilinear", align_corners=False)
+
+        x_fuses_2 = self.attentions[2](self.dilations[2](x3))
+        e3 = self.conv_reduces[2](x_fuses_2)
+        e3 = F.interpolate(e3, (H, W), mode="bilinear", align_corners=False)
+
+        x_fuses_3 = self.attentions[3](self.dilations[3](x4))
+        e4 = self.conv_reduces[3](x_fuses_3)
+        e4 = F.interpolate(e4, (H, W), mode="bilinear", align_corners=False)
+
+        # outputs = [e1, e2, e3, e4]
+
+        e5 = self.classifier(torch.cat([e1, e2, e3, e4], dim=1))
+        #if not self.training:
+        #    return torch.sigmoid(output)
+
+        # outputs.append(output)
+        # outputs = [torch.sigmoid(r) for r in outputs]
+        return torch.sigmoid(e5)
+
+
+
+
+def load_checkpoint(args, running_file):
+
+    model_dir = os.path.join(args.savedir, 'save_models')
+    latest_filename = os.path.join(model_dir, 'latest.txt')
+    model_filename = ''
+
+    if args.evaluate is not None:
+        model_filename = args.evaluate
+    else:
+        if os.path.exists(latest_filename):
+            with open(latest_filename, 'r') as fin:
+                model_filename = fin.readlines()[0].strip()
+    loadinfo = "=> loading checkpoint from '{}'".format(model_filename)
+    print(loadinfo)
+
+    state = None
+    if os.path.exists(model_filename):
+        state = torch.load(model_filename, map_location='cpu')
+        loadinfo2 = "=> loaded checkpoint '{}' successfully".format(model_filename)
+    else:
+        loadinfo2 = "no checkpoint loaded"
+
+    return state
+
+def pidinet():
+
+    pdcs = config_model('carv4')
+    # dil = 24 if args.dil else None
+    return PiDiNet(60, pdcs, dil=24, sa=True)
+
+def fin_contours(hierarchy,contours,shape):
+    not_fhir_index =[]
+    not_shir_index = []
+    for index in range(hierarchy.shape[0]):
+        if hierarchy[index][3] == -1 and cv2.contourArea(contours[index]) > (shape[0] * shape[1] * 0.5):
+            # not_fhir_index.append(index)
+            continue
+        else:
+            not_fhir_index.append(index)
+    #     elif hierarchy[index][2] == -1:
+    #         not_shir_index.append(index)
+    # for index in not_shir_index:
+    #     not_fhir_index.append(hierarchy[index][3])
+    return not_fhir_index
+
+def img_resize(img):
+    max_border = max(img.shape)
+    scale = 1024 / max_border
+
+    new_width = int(img.shape[1] * scale)
+    new_height = int(img.shape[0] * scale)
+    resize_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+    pad_width = 1024 - resize_img.shape[1]
+    pad_height = 1024 - resize_img.shape[0]
+    img_border = cv2.copyMakeBorder(resize_img, 0, pad_height, 0, pad_width, cv2.BORDER_REPLICATE)
+    return img_border,pad_width,pad_height,scale
+
+def preprocess(img):
+    img_border, pad_width, pad_height,factor = img_resize(img)
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        normalize])
+    img_border = morph_preprocess_2(img_border)
+    img = transform(img_border)
+    img = img.unsqueeze(0)
+    return img,pad_width, pad_height,factor,img_border
+
+def postprocess(results):
+    result = torch.squeeze(results[-1]).detach().cpu().numpy()
+
+    result = 1 - result
+    result[result > 0.53] = 1
+    result[result < 0.53] = 0
+    result = (result * 255).astype(np.uint8)
+
+    return result
+def load_model(model_path):
+    model = pidinet()
+
+    model = torch.nn.DataParallel(model)
+
+    checkpoint = torch.load(model_path, map_location='cpu')
+
+    model.load_state_dict(checkpoint['state_dict'])
+
+    return model
+
+
+###### 形态学预处理
+def morph_preprocess(img):
+    yuv_image = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+
+    # 分离 Y、U、V 通道
+    y, u, v = cv2.split(yuv_image)
+    # 创建 CLAHE 对象
+    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
+    # 对 Y 通道应用 CLAHE
+    y_clahe = clahe.apply(y)
+    y_clahe = cv2.bilateralFilter(y_clahe, 15, 80, 20)
+    # 合并处理后的 Y 通道和原始的 U、V 通道
+    yuv_clahe_image = cv2.merge([y_clahe, u, v])
+    # 将图像转换回 RGB 颜色空间
+    img = cv2.cvtColor(yuv_clahe_image, cv2.COLOR_YUV2BGR)
+
+    b, g, r = cv2.split(img)
+
+
+    kernel = np.ones((3, 3), np.uint8)
+    b = cv2.dilate(b, kernel, iterations=3)
+    g = cv2.dilate(g, kernel, iterations=3)
+    r = cv2.dilate(r, kernel, iterations=3)
+    b = cv2.erode(b, kernel, iterations=3)
+    g = cv2.erode(g, kernel, iterations=3)
+    r = cv2.erode(r, kernel, iterations=3)
+
+    b = cv2.erode(b, kernel, iterations=3)
+    g = cv2.erode(g, kernel, iterations=3)
+    r = cv2.erode(r, kernel, iterations=3)
+    b = cv2.dilate(b, kernel, iterations=3)
+    g = cv2.dilate(g, kernel, iterations=3)
+    r = cv2.dilate(r, kernel, iterations=3)
+
+    b = cv2.bilateralFilter(b, 15, 80, 20)
+    g = cv2.bilateralFilter(g, 15, 80, 20)
+    r = cv2.bilateralFilter(r, 15, 80, 20)
+    b = cv2.medianBlur(b, 5)
+    g = cv2.medianBlur(g, 5)
+    r = cv2.medianBlur(r, 5)
+
+    img = cv2.merge([b, g, r])
+
+    print(1111111)
+    return img
+
+# 定义gamma变换函数
+def gamma_trans(img, gamma):
+    """
+    对图像进行gamma变换处理。
+    参数:
+    img: 输入图像
+    gamma: 伽马值
+    返回:
+    gamma变换后的图像
+    """
+    gamma_table = [np.power(x / 255.0, gamma) * 255.0 for x in range(256)]
+    gamma_table = np.round(np.array(gamma_table)).astype(np.uint8)
+    return cv2.LUT(img, gamma_table)
+
+# 定义直方图均衡化函数
+def hisEqulColor2(imga):
+    """
+    直方图均衡化处理。
+    参数:
+    imga: 输入图像
+    返回:
+    直方图均衡化后的图像
+    """
+    ycrcb = cv2.cvtColor(imga, cv2.COLOR_BGR2YCR_CB)
+    channels = cv2.split(ycrcb)
+    clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(1, 1))
+    clahe.apply(channels[0], channels[0])
+    cv2.merge(channels, ycrcb)
+    cv2.cvtColor(ycrcb, cv2.COLOR_YCR_CB2BGR, imga)
+    return imga
+
+def morph_preprocess_2(img):
+    # 应用双边滤波
+    img_bil = cv2.bilateralFilter(img, 25, 15, 15)
+    # 应用直方图均衡化
+    img_equ = hisEqulColor2(img_bil)
+
+    hsv_image = cv2.cvtColor(img_equ, cv2.COLOR_BGR2HSV)
+
+    # 获取V通道
+    v_channel = hsv_image[:, :, 2]
+    # 应用gamma变换
+    v_channel_gam = gamma_trans(v_channel, 0.8)
+    hsv_image[:, :, 2] = v_channel_gam
+    bgr_image = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+    b, g, r = cv2.split(bgr_image)
+    b = cv2.bilateralFilter(b, 15, 20, 20)
+    g = cv2.bilateralFilter(g, 15, 20, 20)
+    r = cv2.bilateralFilter(r, 15, 20, 20)
+    img = cv2.merge([b, g, r])
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img
+def equalHist(img):
+    # 灰度图像矩阵的高、宽
+    h, w = img.shape
+    # 第一步：计算灰度直方图
+    grayHist = cv2.calcHist([img], [0], None, [256], [0, 256])
+    # 第二步：计算累加灰度直方图
+    zeroCumuMoment = np.zeros([256], np.uint32)
+    for p in range(256):
+        if p == 0:
+            zeroCumuMoment[p] = grayHist[0]
+        else:
+            zeroCumuMoment[p] = zeroCumuMoment[p - 1] + grayHist[p]
+    # 第三步：根据累加灰度直方图得到输入灰度级和输出灰度级之间的映射关系
+    outPut_q = np.zeros([256], np.uint8)
+    cofficient = 256.0 / (h * w)
+    for p in range(256):
+        q = cofficient * float(zeroCumuMoment[p]) - 1
+        if q >= 0:
+            outPut_q[p] = math.floor(q)
+        else:
+            outPut_q[p] = 0
+    # 第四步：得到直方图均衡化后的图像
+    equalHistImage = np.zeros(img.shape, np.uint8)
+    for i in range(h):
+        for j in range(w):
+            equalHistImage[i][j] = outPut_q[img[i][j]]
+    return equalHistImage
+
+def padding(img,template_image,pad_weight,pad_height,border_size = 50):
+    img = cv2.copyMakeBorder(img, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT,
+                             value=(0, 0, 0))
+    new_img = img.copy()
+
+    ##### 防止图像边缘处理结果不好，进行预测前图像的预处理
+    #### 上边缘50行像素填充
+    img[:50, :img.shape[1] - 100, :] = template_image[:50, :, :]
+    img[:50, img.shape[1] - 100:, :] = template_image[:50, :100, :]
+
+    #### 下边缘50行像素填充
+    img[img.shape[0] - 50:, :img.shape[1] - 100, :] = template_image[template_image.shape[0] - 50:, :, :]
+    img[img.shape[0] - 50:, img.shape[1] - 100:, :] = template_image[template_image.shape[0] - 50:, :100, :]
+
+    #### 左边缘50列像素填充
+    img[50:img.shape[0] - 50, :50, :] = template_image[:, :50, :]
+
+    #### 右边缘50列像素填充
+    img[50:img.shape[0] - 50, img.shape[1] - 50:, :] = template_image[:, template_image.shape[1] - 50:, :]
+
+    return img
+
+if __name__ == '__main__':
+
+    import matplotlib.pyplot as plt
+    #### 模型路径
+    load_path = 'table5_pidinet.pth'
+    model = load_model(load_path)
+    
+
+    ##### 测试图片的文件夹路径
+    img_dir = r"./test_img1"
+    ####图片保存路径
+    save_dir = r"./output_result4"
+
+    template_path = r"./000226.jpg"
+
+    input_images = [
+        f for f in os.listdir(img_dir) if not os.path.isdir(os.path.join(img_dir, f))
+    ]
+    input_images = list(filter(lambda x: x.endswith(('.jpg', '.png', '.jpeg')), input_images))
+    input_images = [os.path.join(img_dir, f) for f in input_images]
+    input_images = sorted(input_images)
+
+    os.makedirs(save_dir, exist_ok=True)
+    for i,img_path in enumerate(input_images):
+        img = cv2.imread(img_path)
+
+        import time
+
+        start_time = time.time()
+        image = img.copy()
+        template_image = cv2.imread(template_path)
+
+        border_size = 50
+        img = cv2.copyMakeBorder(img, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT,
+                                              value=(0,0,0))
+        new_img = img.copy()
+
+        ##### 防止图像边缘处理结果不好，进行预测前图像的预处理
+        #### 上边缘50行像素填充
+        img[:50,:img.shape[1]-100,:] = template_image[:50,:,:]
+        img[:50,img.shape[1] - 100:,:] = template_image[:50,:100,:]
+
+        #### 下边缘50行像素填充
+        img[img.shape[0] - 50:, :img.shape[1] - 100,:] = template_image[template_image.shape[0] - 50:, :,:]
+        img[img.shape[0] - 50:, img.shape[1] - 100:,:] = template_image[template_image.shape[0] - 50:, :100,:]
+
+        #### 左边缘50列像素填充
+        img[50:img.shape[0]-50,:50,:] = template_image[:,:50,:]
+
+        #### 右边缘50列像素填充
+        img[50:img.shape[0]-50,img.shape[1] - 50:,:] = template_image[:,template_image.shape[1] - 50:,:]
+
+        img_shape = img.shape
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        ### 对图像进行resize+padding操作
+        img,pad_width, pad_height,factor ,img_border = preprocess(img)
+
+        #### 进行模型推理
+        results = model(img)
+
+        #### 后处理结果
+        result = postprocess(results)
+
+        #### 保存边缘检测的结果
+        result = result[0:(result.shape[0] - pad_height),0:(result.shape[1] - pad_width)]
+
+        cv2.imwrite(r"C:\Users\mk12878\Desktop\python.jpg", result)
+        #### 将图像返回会原来的图像大小
+        # padded_image = cv2.resize(result, (img_shape[1],img_shape[0]), interpolation=cv2.INTER_LINEAR)
+        # padded_image2 = np.zeros_like(padded_image)
+        padded_image2 = np.zeros_like(result)
+
+        #### 将像素值大于 0 的像素设置为 0，像素值等于 0 的像素设置为 255 并经图像进行二值化处理
+        # padded_image2[padded_image == 0] = 255
+        padded_image2[result == 0] = 255
+
+        #### 消除图像中的部分噪音
+        # kernel = np.ones((5, 5), np.uint8)
+        # padded_image2 = cv2.dilate(padded_image2, kernel, iterations=3)
+        kernel = np.ones((5, 5), np.uint8)
+        # padded_image2 = cv2.erode(padded_image2, kernel, iterations=2)
+        padded_image2 = cv2.dilate(padded_image2, kernel, iterations=1)
+
+        padded_image3 = np.zeros_like(padded_image2,np.uint8)
+        contours, hierarchy = cv2.findContours(padded_image2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) # cv2.RETR_TREE cv2.RETR_EXTERNAL
+        contours_index = []
+        #### 筛选轮廓，删除面积不满足要求的轮廓
+        ### 筛选外轮廓
+        filtered_contours = []
+        filtered_contours_1 = []
+        inter_contours = []
+        # test = np.zeros_like(padded_image2)
+
+        ratio = 1024 / max((img_shape[1],img_shape[0]))
+
+        img = np.zeros_like(padded_image2)
+        for index in range(len(contours)):
+            rect = cv2.minAreaRect(contours[index])
+
+            if hierarchy[0][index][3] == -1:
+                if min(rect[1]) > (600*ratio) and max(rect[1]) < max(padded_image2.shape)*0.95:
+                    filtered_contours.append(index)
+
+
+            elif hierarchy[0][hierarchy[0][index][3]][3] == -1:
+                if min(rect[1]) > 100 and max(rect[1]) < max(padded_image2.shape) * 0.95: #### (600 * ratio)
+                    filtered_contours_1.append(index)
+                    cv2.drawContours(img, contours[index], -1, 255, 20)
+
+            elif hierarchy[0][index][2] == -1 and hierarchy[0][hierarchy[0][index][3]][3] != -1:
+                print(f"外接矩形的宽高：{rect[1]}")
+                if min(rect[1]) > 100*ratio:
+                    inter_contours.append(index)
+                # cv2.drawContours(test, [contours[index]], -1, 255, thickness=cv2.FILLED)
+
+        test_mask = np.zeros_like(padded_image2)
+        for index in filtered_contours:
+            cv2.drawContours(test_mask, [contours[index]], -1, 255, thickness=cv2.FILLED)
+
+        test_mask_1 = np.zeros_like(padded_image2)
+        for index in filtered_contours_1:
+            cv2.drawContours(test_mask_1, [contours[index]], -1, 255, thickness=cv2.FILLED)
+
+        inter_mask = np.zeros_like(padded_image3)
+        for index in inter_contours:
+            cv2.drawContours(inter_mask, [contours[index]], -1, 255, thickness=cv2.FILLED)
+
+        # test_mask_and = cv2.bitwise_and(test_mask_1,test_mask)
+        test_mask_and = test_mask_1
+        ##### 对内轮廓进行查找并获取
+        kernel = np.ones((7, 7), np.uint8)
+        # test_mask = cv2.dilate(test_mask, kernel, iterations=3)
+        test_mask_and = cv2.dilate(test_mask_and, kernel, iterations=1)
+        inter_mask = cv2.dilate(inter_mask, kernel, iterations=1)
+        # padded_image3 = cv2.dilate(padded_image3, kernel, iterations=10)
+
+        inter_mask = inter_mask.astype(bool)
+        test_mask_and[inter_mask] = 0
+        # cv2.RETR_TREE cv2.RETR_EXTERNAL
+
+        test_mask_and = cv2.resize(test_mask_and, (img_shape[1], img_shape[0]), interpolation=cv2.INTER_LINEAR)
+
+        contours_test, hierarchy_test = cv2.findContours(test_mask_and, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        for index in range(len(contours_test)):
+            contours_test[index][:, :, 0] -= border_size
+            contours_test[index][:, :, 1] -= border_size
+
+        cv2.drawContours(image, contours_test, -1, (0,0,255), thickness=10)
+
+        cv2.imwrite(f"{os.path.join(save_dir,os.path.basename(img_path))}",image)
+        print(111111)
+        print(f"推理耗时：{time.time() - start_time}s")
